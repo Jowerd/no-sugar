@@ -76,7 +76,13 @@ The browser creates a random UUID and stores it in localStorage. Supabase stores
 3. Run the full `supabase/unique-participant-names.sql` file in SQL Editor. It adds the unique name index and updates registration, without changing challenge dates or deleting records. If duplicates remain, the migration stops and rolls back; resolve those rows and run it again.
 4. Publish the updated frontend to Vercel. The database index is authoritative, including simultaneous registration attempts. The frontend provides an early check and a Georgian name-taken message.
 
-After an owner deletes a participant, refreshing the app on that participant's device returns them to the name-entry screen. Admin deletion is only available through the Supabase dashboard; normal visitors have no deletion permission.
+After an owner deletes a participant, refreshing the app on that participant's device returns them to the name-entry screen. Admin deletion is available through the Supabase dashboard. Visitors can delete only their own participant through the token-scoped RPC; direct table deletion remains forbidden.
+
+### Delete your own profile
+
+For an existing database, run `supabase/delete-own-participant.sql` in Supabase SQL Editor before deploying the updated app. This migration installs the function without deleting records or changing challenge settings. New installations include it in `supabase/setup.sql`.
+
+Open History and choose **ჩემი პროფილის წაშლა**, then confirm. The `challenge_delete_me` RPC matches the SHA-256 hash of the current device token and deletes that participant. Check-ins are removed by the existing cascading foreign key. Other participants are unaffected; the deleted name becomes available again. The app clears its local identity only after the server confirms success. Retrying deletion is safe. This requires the original device token; a name alone cannot authorize deletion. Resetting the device only signs out and preserves database records.
 
 Row Level Security is enabled on all tables, with no direct table permissions or policies for anonymous users. The browser's anon key can call only the three narrow `SECURITY DEFINER` functions. These functions verify the token and expose the shared crew names, streaks, and today's status. Anyone with this project's public URL and anon key can join or read the crew; this is a small private group, not an invitation-only system. There is no server-side account authentication. The database enforces one check-in per participant and date with a unique constraint. The browser supplies its local calendar date; the database limits it to within one day of the server date, so local time zones work while large date changes are rejected. A person able to manipulate their own device clock near a date boundary can still affect their own check-in date.
 
