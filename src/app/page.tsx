@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Flame, History, Home, Trash2, WifiOff } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase';
@@ -37,8 +38,8 @@ export default function Page() {
   const [deleting, setDeleting] = useState(false);
   const [notice, setNotice] = useState('');
   const [celebrating, setCelebrating] = useState(false);
+  const [today, setToday] = useState(() => localDate());
   const lock = useRef(false);
-  const today = localDate();
   const supabase = useMemo(() => getSupabase(), []);
   const configured = !!supabase;
 
@@ -60,6 +61,26 @@ export default function Page() {
     } catch (e) { setError(friendlyError(errorMessage(e))); }
     finally { setLoading(false); }
   }, [supabase]);
+
+  useEffect(() => {
+    function syncDate() {
+      const date = localDate();
+      if (date === today) return;
+      setToday(date);
+      if (token) void refresh(token);
+    }
+
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const timer = window.setTimeout(syncDate, nextMidnight.getTime() - now.getTime() + 100);
+    window.addEventListener('focus', syncDate);
+    document.addEventListener('visibilitychange', syncDate);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('focus', syncDate);
+      document.removeEventListener('visibilitychange', syncDate);
+    };
+  }, [today, token, refresh]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -145,7 +166,18 @@ export default function Page() {
     {!configured ? <div className="rounded-3xl border border-amber-400/30 bg-[#fff8eb] p-6 mt-16"><h1 className="text-2xl font-bold">საჭიროა გამართვა</h1><p className="text-slate-600 mt-3 leading-relaxed">ჩაწერე NEXT_PUBLIC_SUPABASE_URL და NEXT_PUBLIC_SUPABASE_ANON_KEY .env.local ფაილში, შემდეგ ხელახლა გაუშვი სერვერი. Supabase-ის SQL Editor-ში გაუშვი supabase/setup.sql.</p></div> : loading && !state ? <div className="mt-28 text-center text-slate-600 animate-pulse">გამოწვევა იტვირთება…</div> : <>
       {error && <div role="alert" className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-base text-rose-800 flex gap-3 items-center"><WifiOff size={18} className="shrink-0"/><span className="flex-1">{error}</span><button className="ml-auto min-h-11 font-bold underline" disabled={busy} onClick={() => { if (!lock.current) void refresh(token); }}>ხელახლა</button></div>}
       {needsDatabaseUpdate && <div role="status" className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-base text-amber-900">გამოწვევის პარამეტრები მონაცემთა ბაზაში ჯერ არ განახლებულა. ორგანიზატორმა ხელახლა უნდა გაუშვას supabase/setup.sql.</div>}
-      {!state?.me ? <section className="mx-auto max-w-md min-h-[calc(100dvh-6rem)] flex flex-col justify-center py-8 sm:py-16"><p className="text-[#247a4d] text-sm font-bold mb-5">პატარა ნაბიჯი, ყოველდღე</p><h1 className="text-[clamp(3.3rem,16vw,5.6rem)] leading-[.98] font-black tracking-[-.055em]">{APP_TITLE}<span className="text-[#247a4d]">.</span></h1><p className="mt-8 text-xl font-bold text-[#192b20]">{challengeTitle}</p><p className="mt-2 text-slate-600">იწყება 1 ოქტომბერს და მთავრდება 31 დეკემბერს.</p><form className="mt-14" onSubmit={e => { e.preventDefault(); void join(); }}><label htmlFor="name" className="text-sm font-bold tracking-[.16em] text-slate-600">როგორ მოგმართოთ?</label><input id="name" value={name} onChange={e => setName(e.target.value)} maxLength={40} autoComplete="given-name" placeholder="შენი სახელი" className="mt-3 w-full h-16 px-5 rounded-2xl bg-[#ffffff] border border-[#dce5da] text-lg outline-none focus:border-[#247a4d]"/><button type="submit" disabled={busy || !name.trim()} className="mt-4 w-full min-h-16 px-3 rounded-2xl bg-[#247a4d] text-white font-black tracking-wider disabled:opacity-50">{busy ? 'ერთდები…' : 'გამოწვევაში შესვლა'} →</button></form><p className="mt-6 text-sm text-slate-500 text-center">საჭიროა მხოლოდ სახელი. ანგარიში და პაროლი არ გჭირდება.</p></section> : <>
+      {!state?.me ? <section className="mx-auto max-w-md min-h-[calc(100dvh-6rem)] flex flex-col justify-center py-8 sm:py-12">
+        <div className="relative isolate aspect-[4/5] overflow-hidden rounded-[2rem] border border-[#e3eae0] bg-[#faf8f0] shadow-[0_20px_50px_-35px_#556753] sm:aspect-[5/4]">
+          <Image src="/welcome-sugar-background.webp" alt="" fill sizes="(max-width: 640px) 100vw, 448px" priority className="object-cover object-bottom" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#fffaf0]/35 via-transparent to-transparent" />
+          <div className="relative z-10 p-6 sm:p-8">
+            <p className="text-[#247a4d] text-sm font-bold mb-5">პატარა ნაბიჯი, ყოველდღე</p>
+            <h1 className="text-[clamp(3.3rem,14vw,5rem)] leading-[.98] font-black tracking-[-.055em]">{APP_TITLE}<span className="text-[#247a4d]">.</span></h1>
+            <p className="mt-7 text-xl font-bold text-[#192b20]">{challengeTitle}</p>
+            <p className="mt-2 max-w-[18rem] text-base leading-snug text-slate-700">იწყება 1 ოქტომბერს და მთავრდება 31 დეკემბერს.</p>
+          </div>
+        </div>
+        <form className="mt-8" onSubmit={e => { e.preventDefault(); void join(); }}><label htmlFor="name" className="text-sm font-bold tracking-[.16em] text-slate-600">როგორ მოგმართოთ?</label><input id="name" value={name} onChange={e => setName(e.target.value)} maxLength={40} autoComplete="given-name" placeholder="შენი სახელი" className="mt-3 w-full h-16 px-5 rounded-2xl bg-[#ffffff] border border-[#dce5da] text-lg outline-none focus:border-[#247a4d]"/><button type="submit" disabled={busy || !name.trim()} className="mt-4 w-full min-h-16 px-3 rounded-2xl bg-[#247a4d] text-white font-black tracking-wider disabled:opacity-50">{busy ? 'ერთდები…' : 'გამოწვევაში შესვლა'} →</button></form><p className="mt-6 text-sm text-slate-500 text-center">საჭიროა მხოლოდ სახელი. ანგარიში და პაროლი არ გჭირდება.</p></section> : <>
         {tab === 'today' ? <><div className="flex justify-between items-end gap-3 mt-7"><div className="min-w-0"><p className="text-slate-500 text-sm font-bold">{challengeTitle}</p><h1 className="text-[clamp(1.5rem,7vw,2.25rem)] leading-tight font-bold mt-2 break-words">გამარჯობა, {state.me.name}<span className="text-[#247a4d]">.</span></h1></div><div className="shrink-0 text-right text-sm font-semibold text-slate-600">დღე <span className="text-[#192b20] text-lg">{Math.max(0, Math.min(day, goalDays))}</span> / {goalDays}</div></div>
           <section className="mt-6 rounded-[2rem] bg-[#ffffff] border border-[#e3eae0] shadow-[0_14px_40px_-28px_#45654f] p-5 sm:p-9 text-center"><StreakDisplay days={own.current} celebrating={celebrating}/><button onClick={() => void checkIn()} disabled={busy || checked || !canCheck} className={`mt-8 w-full min-h-16 px-3 rounded-2xl font-black tracking-wide transition-transform active:scale-[.98] ${checked ? 'bg-[#dff2e4] text-[#247a4d]' : 'bg-[#247a4d] text-white disabled:opacity-50'}`}>{busy ? 'ინახება…' : checked ? <><Check className="inline mr-2" size={21}/> დღეს უკვე მონიშნე</> : !canCheck ? day < 1 ? 'გამოწვევა მალე დაიწყება' : 'გამოწვევა დასრულებულია' : <><Check className="inline mr-2" size={21}/> დღესაც უშაქროდ ვარ</>}</button></section>
           <section className="mt-10"><div className="flex flex-wrap justify-between items-center gap-2 mb-4"><h2 className="text-base font-black">დღევანდელი მეგობრები</h2><span className="text-sm text-slate-500">{state.crew.filter(m => m.checked_in_today).length} / {state.crew.length} მონიშნულია</span></div><div className="rounded-3xl bg-[#ffffff] border border-[#e3eae0] overflow-hidden">{state.crew.length ? state.crew.map(member => <div key={member.id} className="flex items-center gap-3 px-4 sm:px-5 py-4 border-b last:border-0 border-[#e3eae0]"><div className="h-10 w-10 shrink-0 rounded-full bg-[#e5f3e8] flex items-center justify-center text-[#247a4d] font-bold">{member.name[0]?.toUpperCase()}</div><div className="font-semibold flex-1 min-w-0 truncate">{member.name}{member.is_me && <span className="text-sm text-slate-500 ml-2">შენ</span>}</div><span className="shrink-0 text-base text-slate-600 flex gap-1 items-center"><Flame size={16} className="text-[#247a4d]"/>{member.current_streak}</span><span aria-label={member.checked_in_today ? 'დღეს მონიშნა' : 'დღეს არ მოუნიშნავს'} className={`ml-2 h-8 w-8 shrink-0 rounded-full flex items-center justify-center ${member.checked_in_today ? 'bg-[#247a4d] text-white' : 'bg-[#eef1eb] text-slate-500'}`}>{member.checked_in_today ? <Check size={16} strokeWidth={3}/> : '–'}</span></div>) : <p className="p-6 text-slate-500">ჯერ არავინ შემოერთებულა.</p>}</div></section>
