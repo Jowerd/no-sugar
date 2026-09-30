@@ -1,2 +1,18 @@
 @import "tailwindcss";
+.streak-flame > svg { transform-origin: 50% 85%; animation: streak-flicker 2.4s ease-in-out 3; }
+.streak-halo { animation: streak-glow 2.4s ease-out 3; }
+.streak-number { animation: streak-rise .6s cubic-bezier(.2,.8,.2,1) both; }
+.streak-celebrating .streak-flame { animation: streak-pop .7s ease-out both; }
+.streak-celebrating .streak-number { color: #247a4d; }
+.streak-sparks { pointer-events: none; }
+.streak-spark { animation: streak-burst 1s ease-out both; }
+@keyframes streak-flicker { 0%,100% { transform: rotate(0) scale(1); } 40% { transform: rotate(-5deg) scale(1.08); } 70% { transform: rotate(4deg) scale(.98); } }
+@keyframes streak-glow { 0% { transform: scale(1); opacity: .6; } 100% { transform: scale(1.45); opacity: 0; } }
+@keyframes streak-rise { 0% { transform: translateY(10px) scale(.88); opacity: .3; } 65% { transform: translateY(-3px) scale(1.04); } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes streak-pop { 0%,100% { transform: scale(1); } 45% { transform: scale(1.2) rotate(-8deg); } }
+@keyframes streak-burst { 0% { transform: translate(-50%, -50%) translateY(-22px) scale(.4); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(-50%, -50%) translateY(-76px) scale(.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .streak-display *, .streak-display { animation: none !important; }
+  .streak-sparks, .streak-halo { display: none; }
+}
 :root{color-scheme:light;font-size:18px}*{box-sizing:border-box}body{margin:0;background:#f7f9f5;color:#192b20;font-family:var(--font-geo-bro),system-ui,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:default}.safe-bottom{padding-bottom:env(safe-area-inset-bottom)}
