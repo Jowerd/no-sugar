@@ -1,0 +1,2 @@
+@import "tailwindcss";
+:root{color-scheme:light;font-size:18px}*{box-sizing:border-box}body{margin:0;background:#f7f9f5;color:#192b20;font-family:var(--font-geo-bro),system-ui,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:default}.safe-bottom{padding-bottom:env(safe-area-inset-bottom)}
