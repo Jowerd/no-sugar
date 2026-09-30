@@ -67,7 +67,16 @@ git push -u origin main
 
 ## How identity and access work
 
-The browser creates a random UUID and stores it in localStorage. Supabase stores only its SHA-256 hash. A device presenting the token can check in for that participant and read their own dates. `Reset device` forgets the local token but preserves the database history; the old identity cannot be recovered unless the token was backed up separately. Two friends may use the same display name.
+The browser creates a random UUID and stores it in localStorage. Supabase stores only its SHA-256 hash. A device presenting the token can check in for that participant and read their own dates. `Reset device` forgets the local token but preserves the database history; the old identity cannot be recovered unless the token was backed up separately. Names must be unique: letter case and leading/trailing/repeated whitespace do not create a new name. Names are not authentication: entering an existing name never gives access to that participant. After resetting a device, its previous name remains reserved until the owner renames or deletes that participant.
+
+## Manage participants and enable unique names on an existing database
+
+1. In Supabase SQL Editor, run `supabase/find-duplicate-names.sql`. It only lists duplicate names, participant IDs, and successful-day counts.
+2. In **Table Editor → participants**, locate each unwanted participant by its exact `id`. Select that row and choose Delete. Confirm/Save the change if the editor asks. Deleting a participant also permanently deletes their check-ins through the foreign key's `ON DELETE CASCADE`. To preserve history, edit their name instead (for example, add a surname).
+3. Run the full `supabase/unique-participant-names.sql` file in SQL Editor. It adds the unique name index and updates registration, without changing challenge dates or deleting records. If duplicates remain, the migration stops and rolls back; resolve those rows and run it again.
+4. Publish the updated frontend to Vercel. The database index is authoritative, including simultaneous registration attempts. The frontend provides an early check and a Georgian name-taken message.
+
+After an owner deletes a participant, refreshing the app on that participant's device returns them to the name-entry screen. Admin deletion is only available through the Supabase dashboard; normal visitors have no deletion permission.
 
 Row Level Security is enabled on all tables, with no direct table permissions or policies for anonymous users. The browser's anon key can call only the three narrow `SECURITY DEFINER` functions. These functions verify the token and expose the shared crew names, streaks, and today's status. Anyone with this project's public URL and anon key can join or read the crew; this is a small private group, not an invitation-only system. There is no server-side account authentication. The database enforces one check-in per participant and date with a unique constraint. The browser supplies its local calendar date; the database limits it to within one day of the server date, so local time zones work while large date changes are rejected. A person able to manipulate their own device clock near a date boundary can still affect their own check-in date.
 

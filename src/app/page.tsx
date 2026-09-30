@@ -5,6 +5,7 @@ import { getSupabase } from '@/lib/supabase';
 import { STORAGE_KEY, APP_TITLE, CHALLENGE } from '@/lib/config';
 import { addDays, dayNumber, localDate } from '@/lib/dates';
 import type { ChallengeState } from '@/lib/types';
+import { errorMessage, nameKey, normalizeName } from '@/lib/participant-name';
 
 function stats(dates: string[], today: string) {
   const days = [...new Set(dates.filter(d => d <= today))].sort();
@@ -15,6 +16,7 @@ function stats(dates: string[], today: string) {
 }
 
 function friendlyError(message: string) {
+  if (/NAME_TAKEN|participants_name_unique/i.test(message)) return 'ეს სახელი უკვე გამოყენებულია. მიუთითე სხვა სახელი ან დაამატე გვარი.';
   if (/Failed to fetch|NetworkError|fetch failed/i.test(message)) return 'კავშირი ვერ დამყარდა. შეამოწმე ინტერნეტი და სცადე ხელახლა.';
   if (/duplicate|unique/i.test(message)) return 'დღევანდელი მონიშვნა უკვე შენახულია.';
   if (/outside the challenge/i.test(message)) return 'ამ დღეს გამოწვევაში მონიშვნა შეუძლებელია.';
@@ -45,7 +47,7 @@ export default function Page() {
       setState(next);
       if (deviceToken && !next.me) { localStorage.removeItem(STORAGE_KEY); setToken(null); }
       setError('');
-    } catch (e) { setError(friendlyError(e instanceof Error ? e.message : '')); }
+    } catch (e) { setError(friendlyError(errorMessage(e))); }
     finally { setLoading(false); }
   }, [supabase]);
 
@@ -59,15 +61,20 @@ export default function Page() {
 
   async function join() {
     if (!supabase || lock.current || !name.trim()) return;
+    const cleanName = normalizeName(name);
+    if (state?.crew.some(member => nameKey(member.name) === nameKey(cleanName))) {
+      setError(friendlyError('NAME_TAKEN'));
+      return;
+    }
     lock.current = true; setBusy(true); setError('');
     try {
       const id = crypto.randomUUID();
-      const { error: dbError } = await supabase.rpc('challenge_join', { p_name: name.trim(), p_token: id });
+      const { error: dbError } = await supabase.rpc('challenge_join', { p_name: cleanName, p_token: id });
       if (dbError) throw dbError;
       localStorage.setItem(STORAGE_KEY, id);
       setToken(id);
       await refresh(id);
-    } catch (e) { setError(friendlyError(e instanceof Error ? e.message : '')); }
+    } catch (e) { setError(friendlyError(errorMessage(e))); }
     finally { lock.current = false; setBusy(false); }
   }
   async function checkIn() {
@@ -78,7 +85,7 @@ export default function Page() {
       if (dbError) throw dbError;
       setState(previous => previous ? { ...previous, my_dates: [...previous.my_dates, today], crew: previous.crew.map(m => m.is_me ? { ...m, checked_in_today: true, current_streak: stats([...previous.my_dates, today], today).current } : m) } : previous);
       await refresh(token);
-    } catch (e) { setError(friendlyError(e instanceof Error ? e.message : '')); }
+    } catch (e) { setError(friendlyError(errorMessage(e))); }
     finally { lock.current = false; setBusy(false); }
   }
   function reset() { try { localStorage.removeItem(STORAGE_KEY); } catch { /* UI still resets */ } setToken(null); setState(previous => previous ? { ...previous, me: null, my_dates: [] } : previous); setTab('today'); }
